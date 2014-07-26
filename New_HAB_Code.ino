@@ -1,8 +1,14 @@
+#include <string.h>
+#include <util/crc16.h>
 #include <TinyGPS.h>
+
 TinyGPS gps;
+#define RADIOPIN 9
 
 void setup() {
   Serial.begin(9600);
+  pinMode(RADIOPIN,OUTPUT);
+  setPwmFrequency(RADIOPIN, 1);
 }
 
 void loop() {
@@ -15,6 +21,7 @@ void loop() {
   while  (Serial.available()) {
     int c = Serial.read(); 
     if (gps.encode(c))  {
+      
       gps.get_datetime(&date, &time, &fix_age);
       
       if (fix_age == TinyGPS::GPS_INVALID_AGE){
@@ -22,7 +29,6 @@ void loop() {
       }
       
       else {
-      
       gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &fix_age);
       
       gps.f_get_position(&flat, &flon , &fix_age);
@@ -35,10 +41,14 @@ void loop() {
       snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%lu",count,hour,minute,second,lat,lon,alt);
       count = count + 1;
       }
-      
-      //radio + checksum stuff goes in here
     }
   }
+  unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
+  char checksum_str[6];
+  sprintf(checksum_str, "*%04X\n", CHECKSUM);
+  strcat(datastring,checksum_str);
+  rtty_txstring (datastring);
+  
 }
     
      
