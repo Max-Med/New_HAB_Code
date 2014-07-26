@@ -44,7 +44,7 @@ void loop() {
     }
     unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
     char checksum_str[6];
-    sprintf(checksum_str, "*%04X\n", CHECKSUM);
+    snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
     strcat(datastring,checksum_str);
     rtty_txstring (datastring);
   }
