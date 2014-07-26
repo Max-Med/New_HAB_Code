@@ -2,6 +2,8 @@
 #include <util/crc16.h>
 #include <TinyGPS.h>
 
+char datastring[100];
+
 TinyGPS gps;
 #define RADIOPIN 9
 
@@ -9,6 +11,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(RADIOPIN,OUTPUT);
   setPwmFrequency(RADIOPIN, 1);
+  snprintf(datastring,sizeof(datastring),"$$MAX,waiting for GPS lock");
 }
 
 void loop() {
@@ -16,7 +19,7 @@ void loop() {
   unsigned long fix_age, time, date, count, alt;
   int year;
   byte month, day, hour, minute, second, hundredths;
-  char lat[10], lon[10], datastring[100];
+  char lat[10], lon[10];
   
   while  (Serial.available()) {
     int c = Serial.read(); 
