@@ -42,7 +42,7 @@ void loop() {
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
       
-      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld",count,hour,minute,second,lat,lon,alt);  //puts together datstring with gps information in standard format
+      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d",count,hour,minute,second,lat,lon,alt,gps.satellites());  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
       snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
@@ -54,11 +54,11 @@ void loop() {
     else if (millis() - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
         previousmillis = millis();                     //reset previous millis to current millis
         if (flat == 0){                                //unlikely that flat will ever be exactly zero unless still waiting for initial gps fix so if flat=0 then send message saying waiting for gps fix
-          snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix");
+          snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix,%d",gps.satellites());
         }
         
         else {                                         //if flat not equal to zero then must have lost gps fix so send old data with warning added 
-         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%lu",count,hour,minute,second,lat,lon,alt);  //puts together datstring with old gps information in standard format
+         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%lu,%d",count,hour,minute,second,lat,lon,alt,gps.satellites());  //puts together datstring with old gps information in standard format
          }
          
         unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
