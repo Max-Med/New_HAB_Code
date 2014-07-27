@@ -31,9 +31,7 @@ void loop() {
       
       gps.get_datetime(&date, &time, &fix_age);   //retrieve gps date and time and age of last good gps fix
       
-      if (fix_age != TinyGPS::GPS_INVALID_AGE){ //}  //check to make sure fix_age is valid suggesting has good gps lock
-      
-      //else{
+      if (fix_age != TinyGPS::GPS_INVALID_AGE){  //check to make sure fix_age is valid suggesting has good gps lock
 
       gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &fix_age);  //if fix_age is valid then break up time/date into indivual hours, minutes etc.
       
