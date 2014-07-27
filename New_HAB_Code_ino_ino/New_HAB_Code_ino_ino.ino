@@ -19,11 +19,11 @@ void setup() {
   }
 
 void loop() {
-  unsigned long fix_age, time, date, alt, currentmillis; ////defining local variables
+  unsigned long fix_age, time, date, currentmillis; ////defining local variables
+  long alt;
   int year;
   byte month, day, hour, minute, second, hundredths;
   char lat[10], lon[10], checksum_str[8];
-  currentmillis= millis();
   
   while  (Serial.available()) {
     int c = Serial.read(); 
@@ -31,7 +31,9 @@ void loop() {
       
       gps.get_datetime(&date, &time, &fix_age);   //retrieve gps date and time and age of last good gps fix
       
-      if (fix_age != TinyGPS::GPS_INVALID_AGE){             //check to make sure fix_age is valid suggesting has good gps lock
+      if (fix_age != TinyGPS::GPS_INVALID_AGE){ //}  //check to make sure fix_age is valid suggesting has good gps lock
+      
+      //else{
 
       gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &fix_age);  //if fix_age is valid then break up time/date into indivual hours, minutes etc.
       
@@ -40,14 +42,15 @@ void loop() {
       dtostrf (flat, 9, 6, lat);       //turns latitude and longitude into strings rather than floats so can be transmitted
       dtostrf (flon, 9, 6, lon);
       
-      alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m
+      alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
       
-      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%lu",count,hour,minute,second,lat,lon,alt);  //puts together datstring with gps information in standard format
+      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld",count,hour,minute,second,lat,lon,alt);  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
       snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
       rtty_txstring (datastring);
       count = count +1;
+      previousmillis = millis();
       }
     }      
     else if (millis() - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
