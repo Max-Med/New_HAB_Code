@@ -4,7 +4,7 @@
 TinyGPS gps;
 
 char datastring[100];
-unsigned long count;
+unsigned long count, previousmillis;
 
 #define RADIOPIN 9
 float flat, flon;
@@ -15,11 +15,11 @@ void setup() {
   pinMode(RADIOPIN,OUTPUT);
   setPwmFrequency(RADIOPIN, 1);
   flat=0;  //initially set flat as 0 so can see if have ever had gps fix
+  previousmillis = 0;
   }
 
 void loop() {
-  unsigned long fix_age, time, date, alt, previousmillis, currentmillis; ////defining local variables
-  previousmillis = 0;
+  unsigned long fix_age, time, date, alt, currentmillis; ////defining local variables
   int year;
   byte month, day, hour, minute, second, hundredths;
   char lat[10], lon[10], checksum_str[8];
@@ -49,17 +49,15 @@ void loop() {
       rtty_txstring (datastring);
       count = count +1;
       }
-    }
-    else {
-      if (currentmillis - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
-        previousmillis = currentmillis;                     //reset previous millis to current millis
+    }      
+    else if (millis() - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
+        previousmillis = millis();                     //reset previous millis to current millis
         if (flat == 0){                                //unlikely that flat will ever be exactly zero unless still waiting for initial gps fix so if flat=0 then send message saying waiting for gps fix
-          snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix,%lu",count);
-          count = count+1;
+          snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix");
         }
         
         else {                                         //if flat not equal to zero then must have lost gps fix so send old data with warning added 
-         snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%lu",count,hour,minute,second,lat,lon,alt);  //puts together datstring with old gps information in standard format
+         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%lu",count,hour,minute,second,lat,lon,alt);  //puts together datstring with old gps information in standard format
          }
          
         unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
@@ -67,13 +65,9 @@ void loop() {
         strcat(datastring,checksum_str);
         rtty_txstring (datastring);
         count = count +1;
-       }
-
-      
     }
-
-        
   }
+
 
 }
 void rtty_txstring (char * string)
