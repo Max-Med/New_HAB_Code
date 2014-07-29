@@ -1,23 +1,42 @@
+/* HAB tracking code:
+    sets ublox gps in flight mode then reads data and transmits over the radio, also periodically saves gps information to sd card
+  
+  ** MOSI - pin 11
+  ** MISO - pin 12
+  ** CLK - pin 13
+  ** CS - pin 4
+  ** UBLOX Tx - Rx
+  ** UBLOX Rx - Tx
+  ** NTX2B pin 7 - pin 9
+*/
+
 #include <string.h>
 #include <util/crc16.h>
+#include <SD.h>
 #include <TinyGPS.h>
 TinyGPS gps;
-byte gps_set_sucess = 0 ;
 
+byte gps_set_sucess = 0 ;
+const int chipSelect = 4;
 
 char datastring[100];
-unsigned long count, previousmillis;
+unsigned long count, previousmillis,sdcount;
 
 #define RADIOPIN 9
 float flat, flon;
 
 
 void setup() {
+  pinMode(10, OUTPUT);
+    // see if the card is present and can be initialized:
+  SD.begin(chipSelect);
+   
   Serial.begin(9600);
   pinMode(RADIOPIN,OUTPUT);
   setPwmFrequency(RADIOPIN, 1);
   flat=0;  //initially set flat as 0 so can see if have ever had gps fix
   previousmillis = 0;
+  sdcount = 0;
   
   uint8_t setNav[] = {
     0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00,
@@ -56,13 +75,24 @@ void loop() {
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
       
-      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d",count,hour,minute,second,lat,lon,alt,gps.satellites());  //puts together datstring with gps information in standard format
+      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,hour,minute,second,lat,lon,alt,gps.satellites(),sdcount);  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
       snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
       rtty_txstring (datastring);
       count = count +1;
       previousmillis = millis();
+      sdcount= sdcount + 1;  //add 1 to the count for sd card
+      
+      if (sdcount >= 3){   //when count reaches 3 then writes data to sd card, so only writes every 3rd datastring
+         File dataFile = SD.open("datalog.txt", FILE_WRITE); // open the file. note that only one file can be open at a time,
+         if (dataFile) {   // if the file is available, write to it:
+            dataFile.println(datastring);
+            dataFile.close();
+            sdcount = 0 ;   
+         } 
+      }
+        
       }
     }      
     else if (millis() - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
