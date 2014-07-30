@@ -53,10 +53,10 @@ void setup() {
 
 void loop() {
   unsigned long fix_age, time, date; ////defining local variables
-  long alt;
+  long alt, balt;
   int year;
-  byte month, day, hour, minute, second, hundredths;
-  char lat[10], lon[10], checksum_str[8];
+  byte month, day, hour, bhour, minute, bminute, second, bsecond, hundredths;
+  char lat[10], blat [10], lon[10], blon[10], checksum_str[8];
   
   while  (Serial.available()) {
     int c = Serial.read(); 
@@ -75,7 +75,7 @@ void loop() {
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
       
-      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,hour,minute,second,lat,lon,alt,gps.satellites(),sdcount);  //puts together datstring with gps information in standard format
+      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,hour,minute,second,lat,lon,alt,gps.satellites(),fix_age);  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
       snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
@@ -83,6 +83,16 @@ void loop() {
       count = count +1;
       previousmillis = millis();
       sdcount= sdcount + 1;  //add 1 to the count for sd card
+      
+      if (fix_age < 50 && gps.satellites() > 3 ){  //check to see if data is good
+        bhour = hour;                         //if data is good save it as a "back-up" copy to use if gps fix is lost
+        bminute = minute;
+        bsecond = second;
+        strncpy (blat,lat,10);
+        strncpy (blon,lon,10);
+        balt = alt;
+      }
+       
       
       if (sdcount >= 3){   //when count reaches 3 then writes data to sd card, so only writes every 3rd datastring
          File dataFile = SD.open("datalog.txt", FILE_WRITE); // open the file. note that only one file can be open at a time,
@@ -101,8 +111,8 @@ void loop() {
           snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix,%d",gps.satellites());
         }
         
-        else {                                         //if flat not equal to zero then must have lost gps fix so send old data with warning added 
-         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%ld,%d",count,hour,minute,second,lat,lon,alt,gps.satellites());  //puts together datstring with old gps information in standard format
+        else {               //if flat not equal to zero then must have lost gps fix so send old data with warning added 
+         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%ld,%d,0",count,bhour,bminute,bsecond,blat,blon,balt,gps.satellites());  //puts together datstring with old gps information in standard format
          }
          
         unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
