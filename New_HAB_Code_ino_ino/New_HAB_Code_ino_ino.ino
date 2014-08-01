@@ -32,6 +32,7 @@ void setup() {
   SD.begin(chipSelect);
    
   Serial.begin(9600);
+
   pinMode(RADIOPIN,OUTPUT);
   setPwmFrequency(RADIOPIN, 1);
   flat=0;  //initially set flat as 0 so can see if have ever had gps fix
@@ -74,6 +75,15 @@ void loop() {
       dtostrf (flon, 9, 6, lon);
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
+
+      if (fix_age < 60 && gps.satellites() > 3 ){  //check to see if data is good
+        bhour = hour;                         //if data is good save it as a "back-up" copy to use if gps fix is lost
+        bminute = minute;
+        bsecond = second;
+        strncpy (blat,lat,10);
+        strncpy (blon,lon,10);
+        balt = alt;
+      }
       
       snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,hour,minute,second,lat,lon,alt,gps.satellites(),fix_age);  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
@@ -83,15 +93,6 @@ void loop() {
       count = count +1;
       previousmillis = millis();
       sdcount= sdcount + 1;  //add 1 to the count for sd card
-      
-      if (fix_age < 50 && gps.satellites() > 3 ){  //check to see if data is good
-        bhour = hour;                         //if data is good save it as a "back-up" copy to use if gps fix is lost
-        bminute = minute;
-        bsecond = second;
-        strncpy (blat,lat,10);
-        strncpy (blon,lon,10);
-        balt = alt;
-      }
        
       
       if (sdcount >= 3){   //when count reaches 3 then writes data to sd card, so only writes every 3rd datastring
