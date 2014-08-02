@@ -20,7 +20,7 @@ byte gps_set_sucess = 0 ;
 const int chipSelect = 4;
 
 char datastring[100];
-unsigned long count, previousmillis,sdcount;
+unsigned long count, previousmillis,sdcount, truecount;
 
 #define RADIOPIN 9
 float flat, flon;
@@ -38,6 +38,7 @@ void setup() {
   flat=0;  //initially set flat as 0 so can see if have ever had gps fix
   previousmillis = 0;
   sdcount = 0;
+  truecount = 0;     //count of number of "good" gps datastrings
   
   uint8_t setNav[] = {
     0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00,
@@ -76,16 +77,17 @@ void loop() {
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
 
-      if (fix_age < 60 && gps.satellites() > 3 ){  //check to see if data is good
+      if (fix_age < 60 && gps.satellites() > 3 && gps.satellites() != 255 ){  //check to see if data is "good"
         bhour = hour;                         //if data is good save it as a "back-up" copy to use if gps fix is lost
         bminute = minute;
         bsecond = second;
         strncpy (blat,lat,10);
         strncpy (blon,lon,10);
         balt = alt;
+        truecount =truecount + 1;      //add one to number of "good" gps datastrings
       }
       
-      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,hour,minute,second,lat,lon,alt,gps.satellites(),fix_age);  //puts together datstring with gps information in standard format
+      snprintf(datastring,sizeof(datastring),"$$MAX,%lu,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,%lu",count,truecount,hour,minute,second,lat,lon,alt,gps.satellites(),fix_age);  //puts together datstring with gps information in standard format
       unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
       snprintf(checksum_str,sizeof(checksum_str), "*%04X\n", CHECKSUM);
       strcat(datastring,checksum_str);
@@ -107,13 +109,13 @@ void loop() {
       }
     }      
     else if (millis() - previousmillis > 30000){       //if no GPS fix or GPS fix is lost sends out datastring every 30 seconds
-        previousmillis = millis();                     //reset previous millis to current millis
+        previousmillis = millis();                     //reset previous millis to current millisqq
         if (flat == 0){                                //unlikely that flat will ever be exactly zero unless still waiting for initial gps fix so if flat=0 then send message saying waiting for gps fix
           snprintf(datastring,sizeof(datastring),"$$MAX,Waiting for fix,%d",gps.satellites());
         }
         
         else {               //if flat not equal to zero then must have lost gps fix so send old data with warning added 
-         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%02u:%02u:%02u,%s,%s,%ld,%d,0",count,bhour,bminute,bsecond,blat,blon,balt,gps.satellites());  //puts together datstring with old gps information in standard format
+         snprintf(datastring,sizeof(datastring),"$$MAX,WARNING STALE DATA:%lu,%lu,%02u:%02u:%02u,%s,%s,%ld,%d,0",count,truecount,bhour,bminute,bsecond,blat,blon,balt,gps.satellites());  //puts together datstring with old gps information in standard format
          }
          
         unsigned int CHECKSUM = gps_CRC16_checksum(datastring); // Calculates the checksum for this datastring
