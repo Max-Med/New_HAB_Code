@@ -56,8 +56,8 @@ void setup() {
   gps_set_sucess=0;
   
   Serial.print("$PUBX,41,1,0007,0003,4800,0*13\r\n"); 
-  Serial.begin(4800);
   Serial.flush();
+  Serial.begin(4800);
 
   }
 
@@ -85,7 +85,7 @@ void loop() {
       
       alt= gps.altitude()/100;   //gets gps altitude in cm then divides by 100 to get in m (lose some precision but only need to nearest m)
 
-      if (fix_age < 60 && gps.satellites() > 3 && gps.satellites() != 255 ){  //check to see if data is "good"
+      if (fix_age < 100 && gps.satellites() > 3 && gps.satellites() != 255 ){  //check to see if data is "good"
         bhour = hour;                         //if data is good save it as a "back-up" copy to use if gps fix is lost
         bminute = minute;
         bsecond = second;
