@@ -19,6 +19,10 @@ TinyGPS gps;
 byte gps_set_sucess = 0 ;
 const int chipSelect = 4;
 
+long balt;
+byte bhour, bminute, bsecond;
+char blat [10], blon[10];
+
 char datastring[100];
 unsigned long count, previousmillis,sdcount, truecount;
 
@@ -50,15 +54,19 @@ void setup() {
     gps_set_sucess=getUBX_ACK(setNav);
   }
   gps_set_sucess=0;
+  
+  Serial.print("$PUBX,41,1,0007,0003,4800,0*13\r\n"); 
+  Serial.begin(4800);
+  Serial.flush();
 
   }
 
 void loop() {
   unsigned long fix_age, time, date; ////defining local variables
-  long alt, balt;
+  long alt;
   int year;
-  byte month, day, hour, bhour, minute, bminute, second, bsecond, hundredths;
-  char lat[10], blat [10], lon[10], blon[10], checksum_str[8];
+  byte month, day, hour, minute, second, hundredths;
+  char lat[10], lon[10], checksum_str[8];
   
   while  (Serial.available()) {
     int c = Serial.read(); 
